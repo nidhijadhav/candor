@@ -19,25 +19,34 @@ headers = {
     "Accept": "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
 }
-params = {"state": "closed", "per_page": 100}
 
-response = requests.get(url, headers=headers, params=params)
+total_merged = 0
+page = 1
 
-if response.status_code == 401:
-    print("Auth failed: GITHUB_TOKEN is invalid or expired.")
-    sys.exit(1)
+while True:
+    params = {"state": "closed", "per_page": 100, "page": page}
+    response = requests.get(url, headers=headers, params=params)
 
-if response.status_code == 404:
-    print(f"Repo not found: {owner}/{repo}. Check GITHUB_TARGET_OWNER and GITHUB_TARGET_REPO.")
-    sys.exit(1)
+    if response.status_code == 401:
+        print("Auth failed: GITHUB_TOKEN is invalid or expired.")
+        sys.exit(1)
 
-if not response.ok:
-    print(f"GitHub API error {response.status_code}: {response.text}")
-    sys.exit(1)
+    if response.status_code == 404:
+        print(f"Repo not found: {owner}/{repo}. Check GITHUB_TARGET_OWNER and GITHUB_TARGET_REPO.")
+        sys.exit(1)
 
-merged_prs = [pr for pr in response.json() if pr.get("merged_at") is not None]
+    if not response.ok:
+        print(f"GitHub API error {response.status_code}: {response.text}")
+        sys.exit(1)
 
-for pr in merged_prs:
-    print(f"#{pr['number']}")
+    prs = response.json()
+    if not prs:
+        break
 
-print(f"\nTotal merged PRs: {len(merged_prs)}")
+    merged = [pr for pr in prs if pr.get("merged_at") is not None]
+    total_merged += len(merged)
+    print(f"Page {page}: {len(merged)} merged PRs")
+
+    page += 1
+
+print(f"\nTotal merged PRs: {total_merged}")
