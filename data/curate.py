@@ -2,6 +2,9 @@ import os
 import json
 import fnmatch
 import yaml
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import normalize
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,6 +16,7 @@ CONFIG_PATH = "data/curation_config.yaml"
 with open(CONFIG_PATH) as f:
     config = yaml.safe_load(f)
 generated_patterns = config.get("generated_file_patterns", [])
+dedup_threshold = config.get("dedup_similarity_threshold", 0.9)
 
 
 def is_generated(path):
@@ -78,6 +82,59 @@ before = len(comments)
 comments = [c for c in comments if not is_generated(c["file"])]
 dropped_generated = before - len(comments)
 print(f"Dropped (generated files):         {dropped_generated}")
+
+# Filter 5: deduplicate near-identical comments using TF-IDF cosine similarity
+print(f"Deduplicating at threshold {dedup_threshold}...")
+bodies = [c["comment_body"] or "" for c in comments]
+tfidf = normalize(TfidfVectorizer().fit_transform(bodies))
+n = tfidf.shape[0]
+
+# Union-Find
+parent = list(range(n))
+
+def find(x):
+    while parent[x] != x:
+        parent[x] = parent[parent[x]]
+        x = parent[x]
+    return x
+
+def union(x, y):
+    px, py = find(x), find(y)
+    if px != py:
+        parent[px] = py
+
+# Chunked pairwise similarity — only upper triangle to avoid double-counting
+CHUNK = 500
+for start in range(0, n, CHUNK):
+    end = min(start + CHUNK, n)
+    chunk = tfidf[start:end]
+    if end < n:
+        sims = (chunk @ tfidf[end:].T).toarray()
+        rows, cols = np.where(sims >= dedup_threshold)
+        for r, c in zip(rows, cols):
+            union(start + r, end + c)
+    # Within-chunk upper triangle
+    chunk_sims = (chunk @ chunk.T).toarray()
+    size = end - start
+    rows, cols = np.where(
+        (chunk_sims >= dedup_threshold) &
+        (np.arange(size)[:, None] < np.arange(size)[None, :])
+    )
+    for r, c in zip(rows, cols):
+        union(start + r, start + c)
+
+seen = set()
+kept_indices = []
+for i in range(n):
+    root = find(i)
+    if root not in seen:
+        seen.add(root)
+        kept_indices.append(i)
+
+before = len(comments)
+comments = [comments[i] for i in kept_indices]
+dropped_dupes = before - len(comments)
+print(f"Dropped (near-duplicates):         {dropped_dupes}")
 
 print(f"Final comment count:               {len(comments)}")
 

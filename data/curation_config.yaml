@@ -6,3 +6,5 @@ generated_file_patterns:
   - "/vendor/"
   - "/migrations/"
   - "/__generated__/"
+
+dedup_similarity_threshold: 0.9
