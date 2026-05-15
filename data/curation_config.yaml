@@ -1,0 +1,12 @@
+generated_file_patterns:
+  - "package-lock.json"
+  - "yarn.lock"
+  - "*.pb.go"
+  - "*_generated.*"
+  - "/vendor/"
+  - "/migrations/"
+  - "/__generated__/"
+
+guidelines_path: docs/guidelines.md
+dedup_similarity_threshold: 0.9
+date_cutoff_years: 5
