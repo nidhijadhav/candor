@@ -3,6 +3,7 @@ import json
 import fnmatch
 import yaml
 import numpy as np
+from datetime import datetime, timezone, timedelta
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import normalize
 from dotenv import load_dotenv
@@ -17,6 +18,7 @@ with open(CONFIG_PATH) as f:
     config = yaml.safe_load(f)
 generated_patterns = config.get("generated_file_patterns", [])
 dedup_threshold = config.get("dedup_similarity_threshold", 0.9)
+date_cutoff_years = config.get("date_cutoff_years", 5)
 
 
 def is_generated(path):
@@ -135,6 +137,16 @@ before = len(comments)
 comments = [comments[i] for i in kept_indices]
 dropped_dupes = before - len(comments)
 print(f"Dropped (near-duplicates):         {dropped_dupes}")
+
+# Filter 6: drop comments older than date_cutoff_years
+cutoff = datetime.now(tz=timezone.utc) - timedelta(days=365 * date_cutoff_years)
+before = len(comments)
+comments = [
+    c for c in comments
+    if c["merged_at"] and datetime.fromisoformat(c["merged_at"].replace("Z", "+00:00")) >= cutoff
+]
+dropped_old = before - len(comments)
+print(f"Dropped (older than {date_cutoff_years} years):      {dropped_old}")
 
 print(f"Final comment count:               {len(comments)}")
 

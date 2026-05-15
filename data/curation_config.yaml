@@ -8,3 +8,4 @@ generated_file_patterns:
   - "/__generated__/"
 
 dedup_similarity_threshold: 0.9
+date_cutoff_years: 5
