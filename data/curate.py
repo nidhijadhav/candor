@@ -1,11 +1,24 @@
 import os
 import json
+import fnmatch
+import yaml
 from dotenv import load_dotenv
 
 load_dotenv()
 
 RAW_DIR = "data/raw/trinodb_trino"
 OUT_PATH = "data/curated/trinodb_trino.jsonl"
+CONFIG_PATH = "data/curation_config.yaml"
+
+with open(CONFIG_PATH) as f:
+    config = yaml.safe_load(f)
+generated_patterns = config.get("generated_file_patterns", [])
+
+
+def is_generated(path):
+    if not path:
+        return False
+    return any(fnmatch.fnmatch(path, p) or p in path for p in generated_patterns)
 
 os.makedirs("data/curated", exist_ok=True)
 
@@ -59,6 +72,12 @@ before = len(comments)
 comments = [c for c in comments if c["merged_at"] is not None]
 dropped_unmerged = before - len(comments)
 print(f"Dropped (PR not merged):           {dropped_unmerged}")
+
+# Filter 4: drop comments on auto-generated files
+before = len(comments)
+comments = [c for c in comments if not is_generated(c["file"])]
+dropped_generated = before - len(comments)
+print(f"Dropped (generated files):         {dropped_generated}")
 
 print(f"Final comment count:               {len(comments)}")
 

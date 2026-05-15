@@ -1,0 +1,8 @@
+generated_file_patterns:
+  - "package-lock.json"
+  - "yarn.lock"
+  - "*.pb.go"
+  - "*_generated.*"
+  - "/vendor/"
+  - "/migrations/"
+  - "/__generated__/"
