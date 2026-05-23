@@ -1,0 +1,12 @@
+diff --git a/core/trino-main/src/main/java/io/trino/execution/QueryManager.java b/core/trino-main/src/main/java/io/trino/execution/QueryManager.java
+--- a/core/trino-main/src/main/java/io/trino/execution/QueryManager.java
++++ b/core/trino-main/src/main/java/io/trino/execution/QueryManager.java
+@@ -142,6 +142,10 @@ public class QueryManager
+     public void registerQuery(QueryExecution queryExecution)
+     {
+         requireNonNull(queryExecution, "queryExecution is null");
++        if (queryExecution.getQueryId() == null) {
++            throw new IllegalArgumentException("queryId cannot be null");
++        }
+         queries.putIfAbsent(queryExecution.getQueryId(), queryExecution);
+     }
